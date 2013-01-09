@@ -7,6 +7,8 @@ unsigned char port0 = 0x00; // Port0; can be directly written/read.
 unsigned char port1 = 0x01; // Port0; can be directly written/read.
 unsigned char readval = 0x00;
 unsigned char last = 0x31;
+unsigned char rpt = 6;
+unsigned char rptcnl = 6;
 
 #define BUTTON 0x3E
 
@@ -59,7 +61,7 @@ unsigned char lcdsendc(unsigned char val) {
 	i2c_write8(0x00); // Control register / set enable low
 	i2c_stop();
 
-	__delay_cycles(10000);
+	__delay_cycles(2000);
 	return val;
 }
 
@@ -95,7 +97,46 @@ unsigned char lcdsendd(unsigned char val) {
 	i2c_write8(0x02); // Control register / set enable low
 	i2c_stop();
 
-	__delay_cycles(10000);
+	__delay_cycles(2000);
+	return val;
+}
+
+unsigned char lcdsendvol(unsigned char val, unsigned char rpt) {
+	int i;
+	for(i = 0; i < rpt;i++){
+
+	i2c_start();
+	i2c_write8(expander << 1);
+	i2c_write8(port1);
+	i2c_write8(0x02); // Control register / set enable low
+	i2c_stop();
+
+	__delay_cycles(5000);
+
+	i2c_start();
+	i2c_write8(expander << 1);
+	i2c_write8(port1);
+	i2c_write8(0x03); // Control register / set enable high
+	i2c_stop();
+
+	__delay_cycles(5000);
+
+	i2c_start();
+	i2c_write8(expander << 1);
+	i2c_write8(port0);
+	i2c_write8(val); // data to be send
+	i2c_stop();
+
+	__delay_cycles(5000);
+
+	i2c_start();
+	i2c_write8(expander << 1);
+	i2c_write8(port1);
+	i2c_write8(0x02); // Control register / set enable low
+	i2c_stop();
+
+	__delay_cycles(2000);
+	}
 	return val;
 }
 
@@ -120,7 +161,7 @@ void lcdint(void) {
 	lcdsendc(0x08); // turn off display
 	lcdsendc(0x01); // clear
 	lcdsendc(0x06); // courser to right
-	lcdsendc(0x0F); // turn on display
+	lcdsendc(0x0C); // turn on display
 }
 
 void main(void) {
@@ -130,11 +171,9 @@ void main(void) {
 	exint(); // init the expander ic
 	lcdint(); // init the lcd display
 
-//	P1IE |= BUTTONdown; // P1.3 interrupt enabled
-//	P1IFG &= ~BUTTONdown; // P1.3 IFG cleared
-
 	P1IE |= BUTTON; // P1.3 interrupt enabled
 	P1IFG &= ~BUTTON; // P1.3 IFG cleared
+	P1IES |= BUTTON;
 	__enable_interrupt(); // enable all interrupts
 
 	for (;;){
@@ -157,15 +196,13 @@ void main(void) {
 
 	lcdsendc(0xC0);
 
-	lcdsendd(0x56); // H
-	lcdsendd(0x6F); // E
+	lcdsendd(0x56); // V
+	lcdsendd(0x6F); // O
 	lcdsendd(0x6C); // L
-	lcdsendd(0x20); // L
-	lcdsendd(0xFF); // O
-	lcdsendd(0xFF); // H
-	lcdsendd(0xFF); // E
-	lcdsendd(0xFF); // L
+	lcdsendd(0x20); // space
 
+	lcdsendvol(0xFF, rpt); // box
+	lcdsendvol(0x20, rptcnl); // box
 }
 
 
@@ -181,19 +218,21 @@ __interrupt void Port_1(void){
 
 switch( P1IN )
 {
-case 0xFC:
+case 0xFC: // up
 	last = last +1;
 	break;
-case 0xEE:
-	last = last +2;
+case 0xEE: // Left
+	rpt = rpt -1;
+	rptcnl = 12 - rpt;
 	break;
-case 0xFA:
-	last = last +3;
+case 0xFA: // right
+	rpt = rpt +1;
+	rptcnl = 12 - rpt;
 	break;
-case 0xF6:
+case 0xF6: // center
 	last = last -4;
 	break;
-case 0xDE:
+case 0xDE: // down
 	last = last -1;
 	break;
 }
