@@ -13,8 +13,6 @@ unsigned char rptcnl = 6;
 #define BUTTON 0x3E
 
 
-
-
 void exint(void) {
 	i2c_start();
 	i2c_write8(expander << 1);
@@ -164,6 +162,42 @@ void lcdint(void) {
 	lcdsendc(0x0C); // turn on display
 }
 
+// Port 1 interrupt service routine
+#pragma vector=PORT1_VECTOR
+__interrupt void Port_1(void){
+
+switch( P1IN )
+{
+case 0xFC: // up
+	last = last +1;
+	break;
+case 0xEE: // Left
+	rpt = rpt -1;
+	if(rpt == 0){
+		rpt = rpt +1;
+	}
+	rptcnl = 12 - rpt;
+	break;
+case 0xFA: // right
+	rpt = rpt +1;
+	if(rpt == 13){
+		rpt = rpt -1;
+	}
+	rptcnl = 12 - rpt;
+	break;
+case 0xF6: // center
+	last = last -4;
+	break;
+case 0xDE: // down
+	last = last -1;
+	break;
+}
+
+P1IFG &= ~BUTTON; // P1.3 IFG cleared
+//__delay_cycles(10000);
+}
+
+
 void main(void) {
 	WDTCTL = WDTPW + WDTHOLD;
 	__delay_cycles(500000); // start with delay to get lcd ready for init
@@ -212,34 +246,7 @@ void main(void) {
 
 }
 
-// Port 1 interrupt service routine
-#pragma vector=PORT1_VECTOR
-__interrupt void Port_1(void){
 
-switch( P1IN )
-{
-case 0xFC: // up
-	last = last +1;
-	break;
-case 0xEE: // Left
-	rpt = rpt -1;
-	rptcnl = 12 - rpt;
-	break;
-case 0xFA: // right
-	rpt = rpt +1;
-	rptcnl = 12 - rpt;
-	break;
-case 0xF6: // center
-	last = last -4;
-	break;
-case 0xDE: // down
-	last = last -1;
-	break;
-}
-
-P1IFG &= ~BUTTON; // P1.3 IFG cleared
-//__delay_cycles(10000);
-}
 
 
 
