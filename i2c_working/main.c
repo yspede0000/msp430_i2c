@@ -6,6 +6,12 @@ unsigned char expander = 0x20; //address on mcp23016
 unsigned char port0 = 0x00; // Port0; can be directly written/read.
 unsigned char port1 = 0x01; // Port0; can be directly written/read.
 unsigned char readval = 0x00;
+unsigned char last = 0x31;
+
+#define BUTTON 0x3E
+
+
+
 
 void exint(void) {
 	i2c_start();
@@ -124,15 +130,77 @@ void main(void) {
 	exint(); // init the expander ic
 	lcdint(); // init the lcd display
 
+//	P1IE |= BUTTONdown; // P1.3 interrupt enabled
+//	P1IFG &= ~BUTTONdown; // P1.3 IFG cleared
+
+	P1IE |= BUTTON; // P1.3 interrupt enabled
+	P1IFG &= ~BUTTON; // P1.3 IFG cleared
+	__enable_interrupt(); // enable all interrupts
+
+	for (;;){
+
+	lcdsendc(0x80);
+
+	lcdsendd(0x39); // 9
+	lcdsendd(0x32); // 2
+	lcdsendd(0x2E); // .
+	lcdsendd(last); // 6
+	lcdsendd(0x20);
+	lcdsendd(0x4D); // M
 	lcdsendd(0x48); // H
-	lcdsendd(0x45); // E
-	lcdsendd(0x4C); // L
-	lcdsendd(0x4C); // L
-	lcdsendd(0x4F); // O
+	lcdsendd(0x7A); // z
 
-	readi2c(expander, port0); // read from i2c (address, register)
+	lcdsendc(0x8E);
 
-	lcdsendd(readval);
+	lcdsendd(0x46); // F
+	lcdsendd(0x4D); // M
+
+	lcdsendc(0xC0);
+
+	lcdsendd(0x56); // H
+	lcdsendd(0x6F); // E
+	lcdsendd(0x6C); // L
+	lcdsendd(0x20); // L
+	lcdsendd(0xFF); // O
+	lcdsendd(0xFF); // H
+	lcdsendd(0xFF); // E
+	lcdsendd(0xFF); // L
 
 }
+
+
+//	readi2c(expander, port0); // read from i2c (address, register)
+
+//	lcdsendd(readval);
+
+}
+
+// Port 1 interrupt service routine
+#pragma vector=PORT1_VECTOR
+__interrupt void Port_1(void){
+
+switch( P1IN )
+{
+case 0xFC:
+	last = last +1;
+	break;
+case 0xEE:
+	last = last +2;
+	break;
+case 0xFA:
+	last = last +3;
+	break;
+case 0xF6:
+	last = last -4;
+	break;
+case 0xDE:
+	last = last -1;
+	break;
+}
+
+P1IFG &= ~BUTTON; // P1.3 IFG cleared
+//__delay_cycles(10000);
+}
+
+
 
