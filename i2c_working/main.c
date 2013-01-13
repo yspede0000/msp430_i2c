@@ -9,9 +9,43 @@ unsigned char readval = 0x00;
 unsigned char last = 0x31;
 unsigned char rpt = 6;
 unsigned char rptcnl = 6;
+char buffer[32]="0";
+int freq = 926;
+
+
+unsigned int frequencyB;
+unsigned char frequencyH=0;
+unsigned char frequencyL=0;
 
 #define BUTTON 0x3E
 
+
+
+
+
+char* itoa(int value, char* result, int base) {
+                // check that the base if valid
+                if (base < 2 || base > 36) { *result = '\0'; return result; }
+
+                char* ptr = result, *ptr1 = result, tmp_char;
+                int tmp_value;
+
+                do {
+                        tmp_value = value;
+                        value /= base;
+                        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+                } while ( value );
+
+                // Apply negative sign
+                if (tmp_value < 0) *ptr++ = '-';
+                *ptr-- = '\0';
+                while(ptr1 < ptr) {
+                        tmp_char = *ptr;
+                        *ptr--= *ptr1;
+                        *ptr1++ = tmp_char;
+                }
+                return result;
+        }
 
 void exint(void) {
 	i2c_start();
@@ -170,6 +204,7 @@ switch( P1IN )
 {
 case 0xFC: // up
 	last = last +1;
+	freq = freq + 1;
 	break;
 case 0xEE: // Left
 	rpt = rpt -1;
@@ -190,6 +225,7 @@ case 0xF6: // center
 	break;
 case 0xDE: // down
 	last = last -1;
+	freq = freq -1;
 	break;
 }
 
@@ -210,12 +246,78 @@ void main(void) {
 	P1IES |= BUTTON;
 	__enable_interrupt(); // enable all interrupts
 
-	for (;;){
 
+
+	itoa(freq, buffer, 10);
+
+	int counter = 0;
+	while ( buffer[counter]){
+		counter ++;
+	}
 	lcdsendc(0x80);
+	switch (counter){
 
-	lcdsendd(0x39); // 9
-	lcdsendd(0x32); // 2
+	case 3:
+		counter = 0;
+		while ( buffer[counter]){
+
+			if(counter == 2){
+				lcdsendd(0x2E);
+			}
+
+		lcdsendd(buffer[counter]);
+		counter ++;
+		}
+
+	break;
+
+	case 4:
+		counter = 0;
+		while ( buffer[counter]){
+
+			if(counter == 3){
+				lcdsendd(0x2E);
+			}
+
+		lcdsendd(buffer[counter]);
+		counter ++;
+		}
+
+	break;
+	}
+
+/*
+	counter = 0;
+
+	while ( buffer[counter]){
+
+	lcdsendd(buffer[counter]);
+	counter ++;
+	}
+*/
+	//convert freq to hex
+
+	//hexmid = (freq*1000 + 225000);
+
+
+//frequency=92.6;
+
+//frequencyB = 4*(frequency*1000000+225000)/32768; //calculating PLL word
+
+frequencyH=frequencyB>>8;
+
+frequencyL=frequencyB&0XFF;
+
+i2c_start();
+i2c_write8(0xC0); // address
+i2c_write8(frequencyH); // pll freq
+i2c_write8(frequencyL); // pll freq
+i2c_write8(0xB0); // control reg
+i2c_write8(0x10); // Control reg
+i2c_write8(0x00); // Control reg
+i2c_stop();
+
+/*	lcdsendd('2'); // 2
 	lcdsendd(0x2E); // .
 	lcdsendd(last); // 6
 	lcdsendd(0x20);
@@ -237,7 +339,8 @@ void main(void) {
 
 	lcdsendvol(0xFF, rpt); // box
 	lcdsendvol(0x20, rptcnl); // box
-}
+*/
+
 
 
 //	readi2c(expander, port0); // read from i2c (address, register)
