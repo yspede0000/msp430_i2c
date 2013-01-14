@@ -7,8 +7,8 @@ unsigned char port0 = 0x00; // Port0; can be directly written/read.
 unsigned char port1 = 0x01; // Port0; can be directly written/read.
 unsigned char readval = 0x00;
 unsigned char last = 0x31;
-unsigned char rpt = 6;
-unsigned char rptcnl = 6;
+unsigned char volrpt = 6;
+unsigned char volrptcnl = 6;
 char buffer[32]="0";
 int freq = 926;
 
@@ -207,18 +207,18 @@ case 0xFC: // up
 	freq = freq + 1;
 	break;
 case 0xEE: // Left
-	rpt = rpt -1;
-	if(rpt == 0){
-		rpt = rpt +1;
+	volrpt = volrpt -1;
+	if(volrpt == 0){
+		volrpt = volrpt +1;
 	}
-	rptcnl = 12 - rpt;
+	volrptcnl = 12 - volrpt;
 	break;
 case 0xFA: // right
-	rpt = rpt +1;
-	if(rpt == 13){
-		rpt = rpt -1;
+	volrpt = volrpt +1;
+	if(volrpt == 13){
+		volrpt = volrpt -1;
 	}
-	rptcnl = 12 - rpt;
+	volrptcnl = 12 - volrpt;
 	break;
 case 0xF6: // center
 	last = last -4;
@@ -264,6 +264,24 @@ void lcdsendfreq(int freq, char buffer[32]) {
 	}
 }
 
+void lcddisplay(int freq, char buffer[32], unsigned char volrpt,
+		unsigned char volrptcnl) {
+	lcdsendfreq(freq, buffer);
+	lcdsendd(0x4D); // M
+	lcdsendd(0x48); // H
+	lcdsendd(0x7A); // z
+	lcdsendc(0x8E);
+	lcdsendd(0x46); // F
+	lcdsendd(0x4D); // M
+	lcdsendc(0xC0);
+	lcdsendd(0x56); // V
+	lcdsendd(0x6F); // O
+	lcdsendd(0x6C); // L
+	lcdsendd(0x20); // space
+	lcdsendvol(0xFF, volrpt); // box
+	lcdsendvol(0x20, volrptcnl); // box
+}
+
 void main(void) {
 	WDTCTL = WDTPW + WDTHOLD;
 	__delay_cycles(500000); // start with delay to get lcd ready for init
@@ -277,28 +295,18 @@ void main(void) {
 	__enable_interrupt(); // enable all interrupts
 
 
+	i2c_start();
+	i2c_write8(0xC0); // address
+	i2c_write8(0x2C); // pll freq
+	i2c_write8(0x43); // pll freq
+	i2c_write8(0xB0); // control reg
+	i2c_write8(0x10); // Control reg
+	i2c_write8(0x00); // Control reg
+	i2c_stop();
+
+
 	for(;;){
-	lcdsendfreq(freq, buffer);
-	lcdsendd(0x4D); // M
-	lcdsendd(0x48); // H
-	lcdsendd(0x7A); // z
-
-	lcdsendc(0x8E);
-
-	lcdsendd(0x46); // F
-	lcdsendd(0x4D); // M
-
-	lcdsendc(0xC0);
-
-	lcdsendd(0x56); // V
-	lcdsendd(0x6F); // O
-	lcdsendd(0x6C); // L
-	lcdsendd(0x20); // space
-
-	lcdsendvol(0xFF, rpt); // box
-	lcdsendvol(0x20, rptcnl); // box
-
-
+		lcddisplay(freq, buffer, volrpt, volrptcnl);
 	}
 
 
@@ -321,18 +329,10 @@ void main(void) {
 
 //frequencyB = 4*(frequency*1000000+225000)/32768; //calculating PLL word
 
-frequencyH=frequencyB>>8;
+//frequencyH=frequencyB>>8;
 
-frequencyL=frequencyB&0XFF;
+//frequencyL=frequencyB&0XFF;
 
-i2c_start();
-i2c_write8(0xC0); // address
-i2c_write8(frequencyH); // pll freq
-i2c_write8(frequencyL); // pll freq
-i2c_write8(0xB0); // control reg
-i2c_write8(0x10); // Control reg
-i2c_write8(0x00); // Control reg
-i2c_stop();
 
 /*	lcdsendd('2'); // 2
 	lcdsendd(0x2E); // .
