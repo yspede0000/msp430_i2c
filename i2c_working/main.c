@@ -233,6 +233,36 @@ P1IFG &= ~BUTTON; // P1.3 IFG cleared
 //__delay_cycles(10000);
 }
 
+void lcdsendfreq(int freq, char buffer[32]) {
+	itoa(freq, buffer, 10);
+	int counter = 0;
+	while (buffer[counter]) {
+		counter++;
+	}
+	lcdsendc(0x80);
+	switch (counter) {
+	case 3:
+		counter = 0;
+		while (buffer[counter]) {
+			if (counter == 2) {
+				lcdsendd(0x2E);
+			}
+			lcdsendd(buffer[counter]);
+			counter++;
+		}
+		break;
+	case 4:
+		counter = 0;
+		while (buffer[counter]) {
+			if (counter == 3) {
+				lcdsendd(0x2E);
+			}
+			lcdsendd(buffer[counter]);
+			counter++;
+		}
+		break;
+	}
+}
 
 void main(void) {
 	WDTCTL = WDTPW + WDTHOLD;
@@ -247,44 +277,31 @@ void main(void) {
 	__enable_interrupt(); // enable all interrupts
 
 
+	for(;;){
+	lcdsendfreq(freq, buffer);
+	lcdsendd(0x4D); // M
+	lcdsendd(0x48); // H
+	lcdsendd(0x7A); // z
 
-	itoa(freq, buffer, 10);
+	lcdsendc(0x8E);
 
-	int counter = 0;
-	while ( buffer[counter]){
-		counter ++;
+	lcdsendd(0x46); // F
+	lcdsendd(0x4D); // M
+
+	lcdsendc(0xC0);
+
+	lcdsendd(0x56); // V
+	lcdsendd(0x6F); // O
+	lcdsendd(0x6C); // L
+	lcdsendd(0x20); // space
+
+	lcdsendvol(0xFF, rpt); // box
+	lcdsendvol(0x20, rptcnl); // box
+
+
 	}
-	lcdsendc(0x80);
-	switch (counter){
 
-	case 3:
-		counter = 0;
-		while ( buffer[counter]){
 
-			if(counter == 2){
-				lcdsendd(0x2E);
-			}
-
-		lcdsendd(buffer[counter]);
-		counter ++;
-		}
-
-	break;
-
-	case 4:
-		counter = 0;
-		while ( buffer[counter]){
-
-			if(counter == 3){
-				lcdsendd(0x2E);
-			}
-
-		lcdsendd(buffer[counter]);
-		counter ++;
-		}
-
-	break;
-	}
 
 /*
 	counter = 0;
