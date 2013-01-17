@@ -1,4 +1,4 @@
-#include <msp430g2231.h>
+#include <msp430g2553.h>
 #include "i2c.h"
 
 unsigned char radio = 0xC6; // address on si4735 write 0x22
@@ -9,19 +9,18 @@ unsigned char readval = 0x00;
 unsigned char last = 0x31;
 unsigned char volrpt = 6;
 unsigned char volrptcnl = 6;
-char buffer[32]="0";
-int freq = 926;
+char buffer[6]="0";
+short freq = 926;
 
-
+unsigned int tunefreq = 11331.1;
 unsigned int frequencyB;
 unsigned char frequencyH=0;
 unsigned char frequencyL=0;
-
 #define BUTTON 0x3E
 
-
-
-
+extern void CSL_init(void);
+unsigned char TXData;
+unsigned char TXByteCtr;
 
 char* itoa(int value, char* result, int base) {
                 // check that the base if valid
@@ -61,7 +60,7 @@ void exint(void) {
 	i2c_stop();
 }
 
-unsigned char lcdsendc(unsigned char val) {
+void lcdsendc(unsigned char val) {
 
 	i2c_start();
 	i2c_write8(expander << 1);
@@ -94,10 +93,10 @@ unsigned char lcdsendc(unsigned char val) {
 	i2c_stop();
 
 	__delay_cycles(2000);
-	return val;
+
 }
 
-unsigned char lcdsendd(unsigned char val) {
+void lcdsendd(unsigned char val) {
 
 	i2c_start();
 	i2c_write8(expander << 1);
@@ -130,10 +129,10 @@ unsigned char lcdsendd(unsigned char val) {
 	i2c_stop();
 
 	__delay_cycles(2000);
-	return val;
-}
 
-unsigned char lcdsendvol(unsigned char val, unsigned char rpt) {
+}
+/*
+void lcdsendvol(unsigned char val, unsigned char rpt) {
 	int i;
 	for(i = 0; i < rpt;i++){
 
@@ -169,22 +168,23 @@ unsigned char lcdsendvol(unsigned char val, unsigned char rpt) {
 
 	__delay_cycles(2000);
 	}
-	return val;
-}
 
+}
+*/
+/*
 unsigned char readi2c(unsigned char val, unsigned char val1) {
 	i2c_start();
 	i2c_write8(val << 1); // what chip to point on
 	i2c_write8(val1); // what register to read from
 
-	i2c_rpt(); // Repeated start bit.
+//	i2c_rpt(); // Repeated start bit.
 	i2c_write8(val << 1 | 1);
 	readval = i2c_read8(0x0);
 	i2c_stop();
 
 	return (readval);
 }
-
+*/
 void lcdint(void) {
 	lcdsendc(0x30); //int reset word
 	lcdsendc(0x30); //int reset word
@@ -205,7 +205,9 @@ switch( P1IN )
 case 0xFC: // up
 	last = last +1;
 	freq = freq + 1;
+	tunefreq = tunefreq + 12;
 	break;
+	/*
 case 0xEE: // Left
 	volrpt = volrpt -1;
 	if(volrpt == 0){
@@ -220,12 +222,14 @@ case 0xFA: // right
 	}
 	volrptcnl = 12 - volrpt;
 	break;
-case 0xF6: // center
+// *case 0xF6: // center
 	last = last -4;
 	break;
+	*/
 case 0xDE: // down
 	last = last -1;
 	freq = freq -1;
+	tunefreq = tunefreq - 12;
 	break;
 }
 
@@ -278,8 +282,8 @@ void lcddisplay(int freq, char buffer[32], unsigned char volrpt,
 	lcdsendd(0x6F); // O
 	lcdsendd(0x6C); // L
 	lcdsendd(0x20); // space
-	lcdsendvol(0xFF, volrpt); // box
-	lcdsendvol(0x20, volrptcnl); // box
+//	lcdsendvol(0xFF, volrpt); // box
+//	lcdsendvol(0x20, volrptcnl); // box
 }
 
 void main(void) {
@@ -294,75 +298,47 @@ void main(void) {
 	P1IES |= BUTTON;
 	__enable_interrupt(); // enable all interrupts
 
+for(;;){
 
+	frequencyB=tunefreq;
+
+	frequencyH=frequencyB>>8;
+
+	frequencyL=(char)(frequencyB&0xFF);
+
+	__delay_cycles(100000);
 	i2c_start();
 	i2c_write8(0xC0); // address
-	i2c_write8(0x2C); // pll freq
-	i2c_write8(0x43); // pll freq
-	i2c_write8(0xB0); // control reg
+	i2c_write8(frequencyH); // pll freq
+	i2c_write8(frequencyL); // pll freq
+	i2c_write8(0xB8); // control reg
 	i2c_write8(0x10); // Control reg
 	i2c_write8(0x00); // Control reg
 	i2c_stop();
 
 
-	for(;;){
+
 		lcddisplay(freq, buffer, volrpt, volrptcnl);
-	}
+
+}
 
 
+CSL_init();
 
-/*
-	counter = 0;
+TXData = 0x00;                            // Holds TX data
 
-	while ( buffer[counter]){
-
-	lcdsendd(buffer[counter]);
-	counter ++;
-	}
-*/
-	//convert freq to hex
-
-	//hexmid = (freq*1000 + 225000);
-
-
-//frequency=92.6;
-
-//frequencyB = 4*(frequency*1000000+225000)/32768; //calculating PLL word
-
-//frequencyH=frequencyB>>8;
-
-//frequencyL=frequencyB&0XFF;
+while (1)
+{
+  TXByteCtr = 1;                          // Load TX byte counter
+  while (UCB0CTL1 & UCTXSTP);             // Ensure stop condition got sent
+  UCB0CTL1 |= UCTR + UCTXSTT;             // I2C TX, start condition
+  __bis_SR_register(CPUOFF + GIE);        // Enter LPM0 w/ interrupts
+                                          // Remain in LPM0 until all data
+                                          // is TX'd
+  TXData++;                               // Increment data byte
+}
 
 
-/*	lcdsendd('2'); // 2
-	lcdsendd(0x2E); // .
-	lcdsendd(last); // 6
-	lcdsendd(0x20);
-	lcdsendd(0x4D); // M
-	lcdsendd(0x48); // H
-	lcdsendd(0x7A); // z
-
-	lcdsendc(0x8E);
-
-	lcdsendd(0x46); // F
-	lcdsendd(0x4D); // M
-
-	lcdsendc(0xC0);
-
-	lcdsendd(0x56); // V
-	lcdsendd(0x6F); // O
-	lcdsendd(0x6C); // L
-	lcdsendd(0x20); // space
-
-	lcdsendvol(0xFF, rpt); // box
-	lcdsendvol(0x20, rptcnl); // box
-*/
-
-
-
-//	readi2c(expander, port0); // read from i2c (address, register)
-
-//	lcdsendd(readval);
 
 }
 

@@ -100,7 +100,7 @@ unsigned char i2c_write8(unsigned char c)
     c = USISRL; // LSB of USISRL Holds Ack Status of 0 = ACK (0x00) or 1 = NACK (0x01)
     return c;
 }
-
+/*
 unsigned char i2c_read8(unsigned char acknack)
 {
 // RX
@@ -146,4 +146,5 @@ void i2c_rpt(void)
 
 
 	  __delay_cycles( 100 );
-}
+	  */
+
