@@ -323,20 +323,7 @@ for(;;){
 }
 
 
-CSL_init();
 
-TXData = 0x00;                            // Holds TX data
-
-while (1)
-{
-  TXByteCtr = 1;                          // Load TX byte counter
-  while (UCB0CTL1 & UCTXSTP);             // Ensure stop condition got sent
-  UCB0CTL1 |= UCTR + UCTXSTT;             // I2C TX, start condition
-  __bis_SR_register(CPUOFF + GIE);        // Enter LPM0 w/ interrupts
-                                          // Remain in LPM0 until all data
-                                          // is TX'd
-  TXData++;                               // Increment data byte
-}
 
 
 
