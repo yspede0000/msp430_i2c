@@ -12,6 +12,16 @@ unsigned char volrptcnl = 6;
 char buffer[6]="0";
 short freq = 926;
 
+char menuval = 0;
+
+typedef enum {
+	STARTUP,
+	MAIN_DISPLAY,
+	MENU,
+	SHUTDOWN,
+
+} STATES;
+
 unsigned int tunefreq = 11331.1;
 unsigned int frequencyB;
 unsigned char frequencyH=0;
@@ -131,7 +141,7 @@ void lcdsendd(unsigned char val) {
 	__delay_cycles(2000);
 
 }
-/*
+
 void lcdsendvol(unsigned char val, unsigned char rpt) {
 	int i;
 	for(i = 0; i < rpt;i++){
@@ -170,7 +180,7 @@ void lcdsendvol(unsigned char val, unsigned char rpt) {
 	}
 
 }
-*/
+
 /*
 unsigned char readi2c(unsigned char val, unsigned char val1) {
 	i2c_start();
@@ -207,7 +217,7 @@ case 0xFC: // up
 	freq = freq + 1;
 	tunefreq = tunefreq + 12;
 	break;
-	/*
+
 case 0xEE: // Left
 	volrpt = volrpt -1;
 	if(volrpt == 0){
@@ -222,10 +232,10 @@ case 0xFA: // right
 	}
 	volrptcnl = 12 - volrpt;
 	break;
-// *case 0xF6: // center
-	last = last -4;
+case 0xF6: // center
+
 	break;
-	*/
+
 case 0xDE: // down
 	last = last -1;
 	freq = freq -1;
@@ -282,9 +292,23 @@ void lcddisplay(int freq, char buffer[32], unsigned char volrpt,
 	lcdsendd(0x6F); // O
 	lcdsendd(0x6C); // L
 	lcdsendd(0x20); // space
-//	lcdsendvol(0xFF, volrpt); // box
-//	lcdsendvol(0x20, volrptcnl); // box
+	lcdsendvol(0xFF, volrpt); // box
+	lcdsendvol(0x20, volrptcnl); // box
 }
+
+void PrintStr(char *Text)
+{
+    char *c;
+
+    c = Text;
+
+    while ((c != 0) && (*c != 0))
+    {
+    	lcdsendd(*c);
+        c++;
+    }
+}
+
 
 void main(void) {
 	WDTCTL = WDTPW + WDTHOLD;
@@ -318,12 +342,39 @@ for(;;){
 
 
 
-		lcddisplay(freq, buffer, volrpt, volrptcnl);
+		switch ( menuval ){
+
+		case STARTUP :
+			PrintStr("Super radio 3000");
+
+
+		case MAIN_DISPLAY : // main display
+			lcddisplay(freq, buffer, volrpt, volrptcnl);
+			break;
+
+		case MENU : // menu
+
+		case SHUTDOWN : // shutdown
+
+		case 4 : // setting
+
+		case 5 : // del channel
+
+		case 6 : // bass
+
+		case 7 : // treble
+
+		case 8 : // main display
+
+break;
+
+
+
 
 }
 
 
-
+}
 
 
 
