@@ -19,7 +19,10 @@ typedef enum {
 	MAIN_DISPLAY,
 	MENU,
 	SHUTDOWN,
-
+	SETTING,
+	DEL_CHANNEL,
+	BASS,
+	TREBLE
 } STATES;
 
 unsigned int tunefreq = 11331.1;
@@ -356,15 +359,14 @@ for(;;){
 
 		case SHUTDOWN : // shutdown
 
-		case 4 : // setting
+		case SETTING : // setting
 
-		case 5 : // del channel
+		case DEL_CHANNEL : // del channel
 
-		case 6 : // bass
+		case BASS : // bass
 
-		case 7 : // treble
+		case TREBLE : // treble
 
-		case 8 : // main display
 
 break;
 
