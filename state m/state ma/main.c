@@ -11,7 +11,8 @@ unsigned char volrpt = 6;
 unsigned char volrptcnl = 6;
 char buffer[6]="0";
 short freq = 926;
-
+char reg = 0;
+char data = 1;
 char menuval = 0;
 
 typedef enum {
@@ -72,115 +73,56 @@ void exint(void) {
 	i2c_stop();
 }
 
-void lcdsendc(unsigned char val) {
+void lcdsend(unsigned char value, unsigned char reg){
+	char C1;
+	char C2;
+
+	if(reg == 0){
+		C1 = 0x00;
+		C2 = 0x01;
+	}
+
+	if(reg == 1){
+		C1 = 0x02;
+		C2 = 0x03;
+	}
 
 	i2c_start();
 	i2c_write8(expander << 1);
 	i2c_write8(port1);
-	i2c_write8(0x00); // Control register / set enable low
-	i2c_stop();
-
-	__delay_cycles(5000);
-
-	i2c_start();
-	i2c_write8(expander << 1);
-	i2c_write8(port1);
-	i2c_write8(0x01); // Control register / set enable high
-	i2c_stop();
-
-	__delay_cycles(5000);
-
-	i2c_start();
-	i2c_write8(expander << 1);
-	i2c_write8(port0);
-	i2c_write8(val); // data to be send sign.
-	i2c_stop();
-
-	__delay_cycles(5000);
-
-	i2c_start();
-	i2c_write8(expander << 1);
-	i2c_write8(port1);
-	i2c_write8(0x00); // Control register / set enable low
+	i2c_write8(C1); // Control register / set enable low
 	i2c_stop();
 
 	__delay_cycles(2000);
 
-}
-
-void lcdsendd(unsigned char val) {
-
 	i2c_start();
 	i2c_write8(expander << 1);
 	i2c_write8(port1);
-	i2c_write8(0x02); // Control register / set enable low
-	i2c_stop();
-
-	__delay_cycles(5000);
-
-	i2c_start();
-	i2c_write8(expander << 1);
-	i2c_write8(port1);
-	i2c_write8(0x03); // Control register / set enable high
-	i2c_stop();
-
-	__delay_cycles(5000);
-
-	i2c_start();
-	i2c_write8(expander << 1);
-	i2c_write8(port0);
-	i2c_write8(val); // data to be send
-	i2c_stop();
-
-	__delay_cycles(5000);
-
-	i2c_start();
-	i2c_write8(expander << 1);
-	i2c_write8(port1);
-	i2c_write8(0x02); // Control register / set enable low
+	i2c_write8(C2); // Control register / set enable high
 	i2c_stop();
 
 	__delay_cycles(2000);
 
+	i2c_start();
+	i2c_write8(expander << 1);
+	i2c_write8(port0);
+	i2c_write8(value); // data to be send sign.
+	i2c_stop();
+
+	__delay_cycles(2000);
+
+	i2c_start();
+	i2c_write8(expander << 1);
+	i2c_write8(port1);
+	i2c_write8(C1); // Control register / set enable low
+	i2c_stop();
 }
 
 void lcdsendvol(unsigned char val, unsigned char rpt) {
 	int i;
 	for(i = 0; i < rpt;i++){
-
-	i2c_start();
-	i2c_write8(expander << 1);
-	i2c_write8(port1);
-	i2c_write8(0x02); // Control register / set enable low
-	i2c_stop();
-
-	__delay_cycles(5000);
-
-	i2c_start();
-	i2c_write8(expander << 1);
-	i2c_write8(port1);
-	i2c_write8(0x03); // Control register / set enable high
-	i2c_stop();
-
-	__delay_cycles(5000);
-
-	i2c_start();
-	i2c_write8(expander << 1);
-	i2c_write8(port0);
-	i2c_write8(val); // data to be send
-	i2c_stop();
-
-	__delay_cycles(5000);
-
-	i2c_start();
-	i2c_write8(expander << 1);
-	i2c_write8(port1);
-	i2c_write8(0x02); // Control register / set enable low
-	i2c_stop();
-
-	__delay_cycles(2000);
+		lcdsend(val, data);
 	}
-
 }
 
 /*
@@ -198,14 +140,14 @@ unsigned char readi2c(unsigned char val, unsigned char val1) {
 }
 */
 void lcdint(void) {
-	lcdsendc(0x30); //int reset word
-	lcdsendc(0x30); //int reset word
-	lcdsendc(0x30); //int reset word
-	lcdsendc(0x38); // interface
-	lcdsendc(0x08); // turn off display
-	lcdsendc(0x01); // clear
-	lcdsendc(0x06); // courser to right
-	lcdsendc(0x0C); // turn on display
+	lcdsend(0x30, reg); //int reset word
+	lcdsend(0x30, reg); //int reset word
+	lcdsend(0x30, reg); //int reset word
+	lcdsend(0x38, reg); // interface
+	lcdsend(0x08, reg); // turn off display
+	lcdsend(0x01, reg); // clear
+	lcdsend(0x06, reg); // courser to right
+	lcdsend(0x0C, reg); // turn on display
 }
 
 // Port 1 interrupt service routine
@@ -255,15 +197,15 @@ void lcdsendfreq(int freq, char buffer[32]) {
 	while (buffer[counter]) {
 		counter++;
 	}
-	lcdsendc(0x80);
+	lcdsend(0x80, reg);
 	switch (counter) {
 	case 3:
 		counter = 0;
 		while (buffer[counter]) {
 			if (counter == 2) {
-				lcdsendd(0x2E);
+				lcdsend(0x2E, data);
 			}
-			lcdsendd(buffer[counter]);
+			lcdsend(buffer[counter], data);
 			counter++;
 		}
 		break;
@@ -271,31 +213,13 @@ void lcdsendfreq(int freq, char buffer[32]) {
 		counter = 0;
 		while (buffer[counter]) {
 			if (counter == 3) {
-				lcdsendd(0x2E);
+				lcdsend(0x2E, data);
 			}
-			lcdsendd(buffer[counter]);
+			lcdsend(buffer[counter], data);
 			counter++;
 		}
 		break;
 	}
-}
-
-void lcddisplay(int freq, char buffer[32], unsigned char volrpt,
-		unsigned char volrptcnl) {
-	lcdsendfreq(freq, buffer);
-	lcdsendd(0x4D); // M
-	lcdsendd(0x48); // H
-	lcdsendd(0x7A); // z
-	lcdsendc(0x8E);
-	lcdsendd(0x46); // F
-	lcdsendd(0x4D); // M
-	lcdsendc(0xC0);
-	lcdsendd(0x56); // V
-	lcdsendd(0x6F); // O
-	lcdsendd(0x6C); // L
-	lcdsendd(0x20); // space
-	lcdsendvol(0xFF, volrpt); // box
-	lcdsendvol(0x20, volrptcnl); // box
 }
 
 void PrintStr(char *Text)
@@ -306,11 +230,22 @@ void PrintStr(char *Text)
 
     while ((c != 0) && (*c != 0))
     {
-    	lcdsendd(*c);
+    	lcdsend(*c, data);
         c++;
     }
 }
 
+void lcddisplay(int freq, char buffer[32], unsigned char volrpt,
+		unsigned char volrptcnl) {
+	lcdsendfreq(freq, buffer);
+	PrintStr("MHz");
+	lcdsend(0x8E, reg);
+	PrintStr("FM");
+	lcdsend(0xC0, reg);
+	PrintStr("Vol ");
+	lcdsendvol(0xFF, volrpt); // box
+	lcdsendvol(0x20, volrptcnl); // box
+}
 
 void main(void) {
 	WDTCTL = WDTPW + WDTHOLD;
@@ -349,37 +284,37 @@ for(;;){
 		case STARTUP :
 			PrintStr("Super radio 3000");
 			__delay_cycles(2000000);
-			lcdsendc(0x01); // clear display
+			lcdsend(0x01, reg); // clear display
 			menuval ++;
 			break;
 
 		case MAIN_DISPLAY : // main display
 			lcddisplay(freq, buffer, volrpt, volrptcnl);
-			lcdsendc(0x01);
-			menuval ++;
+//			lcdsend(0x01, reg);
+
 			break;
 
 		case MENU : // menu
 			PrintStr("Menu");
-			lcdsendc(0xC0);
+			lcdsend(0xC0, data);
 			PrintStr("sleep    setting");
-			lcdsendc(0x01);
+			lcdsend(0x01, reg);
 			menuval ++;
 			break;
 
 		case SLEEP : // shutdown
 			//mute radio
 
-			lcdsendc(0xC0);
+			lcdsend(0xC0, reg);
 			PrintStr("Slepping...");
 			menuval ++;
-			lcdsendc(0x01);
+			lcdsend(0x01, reg);
 			break;
 
 		case SETTING : // setting
-			lcdsendc(0x01);
+			lcdsend(0x01, reg);
 			PrintStr("Setting");
-			lcdsendc(0xC0);
+			lcdsend(0xC0, reg);
 			PrintStr("Bass      Treble");
 			break;
 
