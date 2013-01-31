@@ -3,7 +3,7 @@
 //http://www.kerrywong.com
 
 #include "i2c.h"
-#include <msp430g2452.h>
+#include <msp430.h>
 
 #define SDA  BIT7 //P1.7
 #define SCL  BIT6 //P1.6
@@ -100,7 +100,7 @@ unsigned char i2c_write8(unsigned char c)
     c = USISRL; // LSB of USISRL Holds Ack Status of 0 = ACK (0x00) or 1 = NACK (0x01)
     return c;
 }
-/*
+
 unsigned char i2c_read8(unsigned char acknack)
 {
 // RX
@@ -146,5 +146,5 @@ void i2c_rpt(void)
 
 
 	  __delay_cycles( 100 );
-	  */
 
+}

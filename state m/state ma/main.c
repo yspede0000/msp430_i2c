@@ -14,6 +14,7 @@ short freq = 926;
 char reg = 0;
 char data = 1;
 char menuval = 0;
+short menu_state = 0;
 
 typedef enum {
 	STARTUP,
@@ -34,6 +35,9 @@ unsigned char frequencyL=0;
 extern void CSL_init(void);
 unsigned char TXData;
 unsigned char TXByteCtr;
+
+void menuval_switch(void);
+void i2c_update(void);
 
 char* itoa(int value, char* result, int base) {
                 // check that the base if valid
@@ -154,38 +158,161 @@ void lcdint(void) {
 #pragma vector=PORT1_VECTOR
 __interrupt void Port_1(void){
 
-switch( P1IN )
-{
+switch ( P1IN ){
+
 case 0xFC: // up
-	last = last +1;
-	freq = freq + 1;
-	tunefreq = tunefreq + 12;
-	break;
+	switch(menuval){
 
-case 0xEE: // Left
-	volrpt = volrpt -1;
-	if(volrpt == 0){
-		volrpt = volrpt +1;
+	case MAIN_DISPLAY:
+		last = last +1;
+		freq = freq + 1;
+		tunefreq = tunefreq + 12;
+		menuval_switch();
+		i2c_update();
+		break;
+
+	case MENU:
+		break;
+
+	case SLEEP:
+		break;
+
+	case SETTING:
+		break;
+
+	case BASS:
+		break;
+
+	case TREBLE:
+		break;
 	}
-	volrptcnl = 12 - volrpt;
-	break;
-case 0xFA: // right
-	volrpt = volrpt +1;
-	if(volrpt == 13){
-		volrpt = volrpt -1;
-	}
-	volrptcnl = 12 - volrpt;
-	break;
-case 0xF6: // center
-
 	break;
 
-case 0xDE: // down
-	last = last -1;
-	freq = freq -1;
-	tunefreq = tunefreq - 12;
-	break;
+
+	case 0xEE: // Left
+		switch(menuval){
+
+			case MAIN_DISPLAY:
+				volrpt = volrpt -1;
+					if(volrpt == 0){
+						volrpt = volrpt +1;
+					}
+					volrptcnl = 12 - volrpt;
+					menuval_switch();
+					i2c_update();
+					break;
+
+			case MENU:
+				menuval=SLEEP;
+				menuval_switch();
+				//mute
+				break;
+
+			case SLEEP:
+					break;
+
+			case SETTING:
+				menuval=BASS;
+				menuval_switch();
+					break;
+
+			case BASS:
+					break;
+
+			case TREBLE:
+					break;
+			}
+		break;
+
+		case 0xFA: // right
+			switch(menuval){
+
+				case MAIN_DISPLAY:
+					volrpt = volrpt +1;
+						if(volrpt == 13){
+							volrpt = volrpt -1;
+						}
+						volrptcnl = 12 - volrpt;
+						menuval_switch();
+						i2c_update();
+						break;
+
+				case MENU:
+					menuval=SETTING;
+					menuval_switch();
+				break;
+
+				case SLEEP:
+					break;
+
+				case SETTING:
+					menuval=TREBLE;
+					menuval_switch();
+					break;
+
+				case BASS:
+					break;
+
+				case TREBLE:
+					break;
+				}
+			break;
+
+			case 0xF6: // center
+				switch(menuval){
+
+					case MAIN_DISPLAY:
+						menuval=MENU;
+						menuval_switch();
+						break;
+
+					case MENU:
+								break;
+					case SLEEP:
+								break;
+					case SETTING:
+								break;
+					case BASS:
+								break;
+					case TREBLE:
+								break;
+					}
+				break;
+
+				case 0xDE: // down
+					switch(menuval){
+
+						case MAIN_DISPLAY:
+							last = last -1;
+								freq = freq -1;
+								tunefreq = tunefreq - 12;
+								menuval_switch();
+								i2c_update();
+								break;
+						case MENU:
+							--menuval;
+							menuval_switch();
+						break;
+						case SLEEP:
+							menuval=MAIN_DISPLAY;
+							menuval_switch();
+								break;
+						case SETTING:
+							menuval=MENU;
+							menuval_switch();
+								break;
+						case BASS:
+							menuval=SETTING;
+							menuval_switch();
+								break;
+						case TREBLE:
+							menuval=SETTING;
+							menuval_switch();
+								break;
+						}
+					break;
 }
+
 
 P1IFG &= ~BUTTON; // P1.3 IFG cleared
 //__delay_cycles(10000);
@@ -247,6 +374,68 @@ void lcddisplay(int freq, char buffer[32], unsigned char volrpt,
 	lcdsendvol(0x20, volrptcnl); // box
 }
 
+
+void menuval_switch(void) {
+	switch (menuval) {
+	case STARTUP:
+		menu_state = STARTUP;
+		PrintStr("Super radio 3000");
+		__delay_cycles(900000);
+		lcdsend(0x01, reg); // clear display
+		menuval++;
+	case MAIN_DISPLAY: // main display
+		menu_state = MAIN_DISPLAY;
+		lcddisplay(freq, buffer, volrpt, volrptcnl);
+
+		break;
+	case MENU: // menu
+		menu_state = MENU;
+		lcdsend(0x01, reg);
+		PrintStr("Menu");
+		lcdsend(0xC0, reg);
+		PrintStr("sleep    setting");
+		//lcdsendc(0x01);
+		//menuval++;
+		break;
+	case SLEEP: // shutdown
+		//mute radio
+		lcdsend(0x01, reg);
+		menu_state = SLEEP;
+		lcdsend(0xC0, reg);
+		PrintStr("Slepping...");
+		//menuval++;
+		//lcdsendc(0x01);
+		break;
+	case SETTING: // setting
+		menu_state = SETTING;
+		lcdsend(0x01, reg);
+		PrintStr("Setting");
+		lcdsend(0xC0, reg);
+		PrintStr("Bass      Treble");
+		break;
+	case BASS: // bass
+		menu_state = BASS;
+	case TREBLE: // treble
+		menu_state = TREBLE;
+		break;
+	}
+}
+
+void i2c_update(void) {
+	frequencyB = tunefreq;
+	frequencyH = frequencyB >> 8;
+	frequencyL = (char) (frequencyB & 0xFF);
+	__delay_cycles(100000);
+	i2c_start();
+	i2c_write8(0xC0); // address
+	i2c_write8(frequencyH); // pll freq
+	i2c_write8(frequencyL); // pll freq
+	i2c_write8(0xB8); // control reg
+	i2c_write8(0x10); // Control reg
+	i2c_write8(0x00); // Control reg
+	i2c_stop();
+}
+
 void main(void) {
 	WDTCTL = WDTPW + WDTHOLD;
 	__delay_cycles(500000); // start with delay to get lcd ready for init
@@ -258,72 +447,9 @@ void main(void) {
 	P1IFG &= ~BUTTON; // P1.3 IFG cleared
 	P1IES |= BUTTON;
 	__enable_interrupt(); // enable all interrupts
-
-for(;;){
-
-	frequencyB=tunefreq;
-
-	frequencyH=frequencyB>>8;
-
-	frequencyL=(char)(frequencyB&0xFF);
-
-	__delay_cycles(100000);
-	i2c_start();
-	i2c_write8(0xC0); // address
-	i2c_write8(frequencyH); // pll freq
-	i2c_write8(frequencyL); // pll freq
-	i2c_write8(0xB8); // control reg
-	i2c_write8(0x10); // Control reg
-	i2c_write8(0x00); // Control reg
-	i2c_stop();
-
-
-
-		switch ( menuval ){
-
-		case STARTUP :
-			PrintStr("Super radio 3000");
-			__delay_cycles(2000000);
-			lcdsend(0x01, reg); // clear display
-			menuval ++;
-			break;
-
-		case MAIN_DISPLAY : // main display
-			lcddisplay(freq, buffer, volrpt, volrptcnl);
-//			lcdsend(0x01, reg);
-
-			break;
-
-		case MENU : // menu
-			PrintStr("Menu");
-			lcdsend(0xC0, data);
-			PrintStr("sleep    setting");
-			lcdsend(0x01, reg);
-			menuval ++;
-			break;
-
-		case SLEEP : // shutdown
-			//mute radio
-
-			lcdsend(0xC0, reg);
-			PrintStr("Slepping...");
-			menuval ++;
-			lcdsend(0x01, reg);
-			break;
-
-		case SETTING : // setting
-			lcdsend(0x01, reg);
-			PrintStr("Setting");
-			lcdsend(0xC0, reg);
-			PrintStr("Bass      Treble");
-			break;
-
-		case BASS : // bass
-
-		case TREBLE : // treble
-
-
-break;
+	menuval_switch();
+	i2c_update();
+for(;;) {
 
 
 
@@ -335,7 +461,7 @@ break;
 
 
 
-}
+
 
 
 
