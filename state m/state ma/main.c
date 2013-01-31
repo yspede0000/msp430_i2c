@@ -18,9 +18,8 @@ typedef enum {
 	STARTUP,
 	MAIN_DISPLAY,
 	MENU,
-	SHUTDOWN,
+	SLEEP,
 	SETTING,
-	DEL_CHANNEL,
 	BASS,
 	TREBLE
 } STATES;
@@ -349,19 +348,40 @@ for(;;){
 
 		case STARTUP :
 			PrintStr("Super radio 3000");
-
+			__delay_cycles(2000000);
+			lcdsendc(0x01); // clear display
+			menuval ++;
+			break;
 
 		case MAIN_DISPLAY : // main display
 			lcddisplay(freq, buffer, volrpt, volrptcnl);
+			lcdsendc(0x01);
+			menuval ++;
 			break;
 
 		case MENU : // menu
+			PrintStr("Menu");
+			lcdsendc(0xC0);
+			PrintStr("sleep    setting");
+			lcdsendc(0x01);
+			menuval ++;
+			break;
 
-		case SHUTDOWN : // shutdown
+		case SLEEP : // shutdown
+			//mute radio
+
+			lcdsendc(0xC0);
+			PrintStr("Slepping...");
+			menuval ++;
+			lcdsendc(0x01);
+			break;
 
 		case SETTING : // setting
-
-		case DEL_CHANNEL : // del channel
+			lcdsendc(0x01);
+			PrintStr("Setting");
+			lcdsendc(0xC0);
+			PrintStr("Bass      Treble");
+			break;
 
 		case BASS : // bass
 
