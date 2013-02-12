@@ -13,28 +13,21 @@ unsigned char volrpt_1 = 6;
 unsigned char volrptcnl_1 = 6;
 unsigned char volrpt_2 = 6;
 unsigned char volrptcnl_2 = 6;
-char buffer[6]="0";
+char buffer[6] = "0";
 short freq = 926;
 char reg = 0;
 char data = 1;
 char menuval = 0;
 short menu_state = 0;
 
-
 typedef enum {
-	STARTUP,
-	MAIN_DISPLAY,
-	MENU,
-	SLEEP,
-	SETTING,
-	BASS,
-	TREBLE
+	STARTUP, MAIN_DISPLAY, MENU, SLEEP, SETTING, BASS, TREBLE
 } STATES;
 
 unsigned int tunefreq = 11331.1;
 unsigned int frequencyB;
-unsigned char frequencyH=0;
-unsigned char frequencyL=0;
+unsigned char frequencyH = 0;
+unsigned char frequencyL = 0;
 #define BUTTON 0x3E
 
 extern void CSL_init(void);
@@ -46,28 +39,34 @@ void i2c_update(void);
 void i2c_mute(void);
 
 char* itoa(int value, char* result, int base) {
-                // check that the base if valid
-                if (base < 2 || base > 36) { *result = '\0'; return result; }
+	// check that the base if valid
+	if (base < 2 || base > 36) {
+		*result = '\0';
+		return result;
+	}
 
-                char* ptr = result, *ptr1 = result, tmp_char;
-                int tmp_value;
+	char* ptr = result, *ptr1 = result, tmp_char;
+	int tmp_value;
 
-                do {
-                        tmp_value = value;
-                        value /= base;
-                        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
-                } while ( value );
+	do {
+		tmp_value = value;
+		value /= base;
+		*ptr++ =
+				"zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35
+						+ (tmp_value - value * base)];
+	} while (value);
 
-                // Apply negative sign
-                if (tmp_value < 0) *ptr++ = '-';
-                *ptr-- = '\0';
-                while(ptr1 < ptr) {
-                        tmp_char = *ptr;
-                        *ptr--= *ptr1;
-                        *ptr1++ = tmp_char;
-                }
-                return result;
-        }
+	// Apply negative sign
+	if (tmp_value < 0)
+		*ptr++ = '-';
+	*ptr-- = '\0';
+	while (ptr1 < ptr) {
+		tmp_char = *ptr;
+		*ptr-- = *ptr1;
+		*ptr1++ = tmp_char;
+	}
+	return result;
+}
 
 void exint(void) {
 	i2c_start();
@@ -83,16 +82,16 @@ void exint(void) {
 	i2c_stop();
 }
 
-void lcdsend(unsigned char value, unsigned char reg){
+void lcdsend(unsigned char value, unsigned char reg) {
 	char C1;
 	char C2;
 
-	if(reg == 0){
+	if (reg == 0) {
 		C1 = 0x00;
 		C2 = 0x01;
 	}
 
-	if(reg == 1){
+	if (reg == 1) {
 		C1 = 0x02;
 		C2 = 0x03;
 	}
@@ -130,25 +129,25 @@ void lcdsend(unsigned char value, unsigned char reg){
 
 void lcdsendvol(unsigned char val, unsigned char rpt) {
 	int i;
-	for(i = 0; i < rpt;i++){
+	for (i = 0; i < rpt; i++) {
 		lcdsend(val, data);
 	}
 }
 
 /*
-unsigned char readi2c(unsigned char val, unsigned char val1) {
-	i2c_start();
-	i2c_write8(val << 1); // what chip to point on
-	i2c_write8(val1); // what register to read from
+ unsigned char readi2c(unsigned char val, unsigned char val1) {
+ i2c_start();
+ i2c_write8(val << 1); // what chip to point on
+ i2c_write8(val1); // what register to read from
 
-//	i2c_rpt(); // Repeated start bit.
-	i2c_write8(val << 1 | 1);
-	readval = i2c_read8(0x0);
-	i2c_stop();
+ //	i2c_rpt(); // Repeated start bit.
+ i2c_write8(val << 1 | 1);
+ readval = i2c_read8(0x0);
+ i2c_stop();
 
-	return (readval);
-}
-*/
+ return (readval);
+ }
+ */
 void lcdint(void) {
 	lcdsend(0x30, reg); //int reset word
 	lcdsend(0x30, reg); //int reset word
@@ -162,204 +161,202 @@ void lcdint(void) {
 
 // Port 1 interrupt service routine
 #pragma vector=PORT1_VECTOR
-__interrupt void Port_1(void){
+__interrupt void Port_1(void) {
 
-switch ( P1IN ){
+	switch (P1IN) {
 
-case 0xFC: // up
-	switch(menuval){
+	case 0xFC: // up
+		switch (menuval) {
 
-	case MAIN_DISPLAY:
-		last = last +1;
-		freq = freq + 1;
-		tunefreq = tunefreq + 12;
-		menuval_switch();
-		i2c_update();
-		break;
-
-	case MENU:
-		break;
-
-	case SLEEP:
-		break;
-
-	case SETTING:
-		break;
-
-	case BASS:
-		break;
-
-	case TREBLE:
-		break;
-	}
-	break;
-
-
-	case 0xEE: // Left
-		switch(menuval){
-
-			case MAIN_DISPLAY:
-				volrpt = volrpt -1;
-					if(volrpt == 0){
-						volrpt = volrpt +1;
-					}
-					volrptcnl = 12 - volrpt;
-					menuval_switch();
-					i2c_update();
-					break;
-
-			case MENU:
-				menuval=SLEEP;
-				menuval_switch();
-				i2c_mute();
-				break;
-
-			case SLEEP:
-					break;
-
-			case SETTING:
-				menuval=BASS;
-				menuval_switch();
-				lcdsend(0xC0, reg);
-				lcdsendvol(0xFF, volrpt_1); // box
-				lcdsendvol(0x20, volrptcnl_1); // box
-					break;
-
-			case BASS:
-				if (volrpt_1!=1){
-				lcdsend(0xC0, reg);
-				volrpt_1--;
-				volrptcnl_1=16-volrpt_1;
-				lcdsendvol(0xFF, volrpt_1); // box
-				lcdsendvol(0x20, volrptcnl_1); // box
-				}
-				break;
-
-			case TREBLE:
-				if (volrpt_2!=1){
-				lcdsend(0xC0, reg);
-				volrpt_2--;
-				volrptcnl_2=16-volrpt_2;
-				lcdsendvol(0xFF, volrpt_2); // box
-				lcdsendvol(0x20, volrptcnl_2); // box
-				}
-				break;
-			}
-		break;
-
-		case 0xFA: // right
-			switch(menuval){
-
-				case MAIN_DISPLAY:
-					volrpt = volrpt +1;
-						if(volrpt == 13){
-							volrpt = volrpt -1;
-						}
-						volrptcnl = 12 - volrpt;
-						menuval_switch();
-						i2c_update();
-						break;
-
-				case MENU:
-					menuval=SETTING;
-					menuval_switch();
-				break;
-
-				case SLEEP:
-					break;
-
-				case SETTING:
-					menuval=TREBLE;
-					menuval_switch();
-					lcdsend(0xC0, reg);
-					lcdsendvol(0xFF, volrpt_2); // box
-					lcdsendvol(0x20, volrptcnl_2); // box
-					break;
-
-				case BASS:
-					if (volrpt_1!=16){
-					lcdsend(0xC0, reg);
-					volrpt_1++;
-					volrptcnl_1=16-volrpt_1;
-					lcdsendvol(0xFF, volrpt_1); // box
-					lcdsendvol(0x20, volrptcnl_1); // box
-					}
-					break;
-
-				case TREBLE:
-					if (volrpt_2!=16){
-					lcdsend(0xC0, reg);
-					volrpt_2++;
-					volrptcnl_2=16-volrpt_2;
-					lcdsendvol(0xFF, volrpt_2); // box
-					lcdsendvol(0x20, volrptcnl_2); // box
-					}
-					break;
-				}
+		case MAIN_DISPLAY:
+			last = last + 1;
+			freq = freq + 1;
+			tunefreq = tunefreq + 12;
+			menuval_switch();
+			i2c_update();
 			break;
 
-			case 0xF6: // center
-				switch(menuval){
+		case MENU:
+			break;
 
-					case MAIN_DISPLAY:
-						menuval=MENU;
-						menuval_switch();
-						break;
+		case SLEEP:
+			break;
 
-					case MENU:
-								break;
-					case SLEEP:
-								break;
-					case SETTING:
-								break;
-					case BASS:
-						menuval=SETTING;
-						menuval_switch();
-								break;
-					case TREBLE:
-						menuval=SETTING;
-						menuval_switch();
-								break;
-					}
-				break;
+		case SETTING:
+			break;
 
-				case 0xDE: // down
-					switch(menuval){
+		case BASS:
+			break;
 
-						case MAIN_DISPLAY:
-							last = last -1;
-								freq = freq -1;
-								tunefreq = tunefreq - 12;
-								menuval_switch();
-								i2c_update();
-								break;
-						case MENU:
-							--menuval;
-							menuval_switch();
-						break;
-						case SLEEP:
-							menuval=MAIN_DISPLAY;
-							menuval_switch();
-							i2c_update();
-								break;
-						case SETTING:
-							menuval=MENU;
-							menuval_switch();
-								break;
-						case BASS:
-							menuval=SETTING;
-							menuval_switch();
-								break;
-						case TREBLE:
-							menuval=SETTING;
-							menuval_switch();
-								break;
-						}
-					break;
-}
+		case TREBLE:
+			break;
+		}
+		break;
 
+	case 0xEE: // Left
+		switch (menuval) {
 
-P1IFG &= ~BUTTON; // P1.3 IFG cleared
+		case MAIN_DISPLAY:
+			volrpt = volrpt - 1;
+			if (volrpt == 0) {
+				volrpt = volrpt + 1;
+			}
+			volrptcnl = 12 - volrpt;
+			menuval_switch();
+			i2c_update();
+			break;
+
+		case MENU:
+			menuval = SLEEP;
+			menuval_switch();
+			i2c_mute();
+			break;
+
+		case SLEEP:
+			break;
+
+		case SETTING:
+			menuval = BASS;
+			menuval_switch();
+			lcdsend(0xC0, reg);
+			lcdsendvol(0xFF, volrpt_1); // box
+			lcdsendvol(0x20, volrptcnl_1); // box
+			break;
+
+		case BASS:
+			if (volrpt_1 != 1) {
+				lcdsend(0xC0, reg);
+				volrpt_1--;
+				volrptcnl_1 = 16 - volrpt_1;
+				lcdsendvol(0xFF, volrpt_1); // box
+				lcdsendvol(0x20, volrptcnl_1); // box
+			}
+			break;
+
+		case TREBLE:
+			if (volrpt_2 != 1) {
+				lcdsend(0xC0, reg);
+				volrpt_2--;
+				volrptcnl_2 = 16 - volrpt_2;
+				lcdsendvol(0xFF, volrpt_2); // box
+				lcdsendvol(0x20, volrptcnl_2); // box
+			}
+			break;
+		}
+		break;
+
+	case 0xFA: // right
+		switch (menuval) {
+
+		case MAIN_DISPLAY:
+			volrpt = volrpt + 1;
+			if (volrpt == 13) {
+				volrpt = volrpt - 1;
+			}
+			volrptcnl = 12 - volrpt;
+			menuval_switch();
+			i2c_update();
+			break;
+
+		case MENU:
+			menuval = SETTING;
+			menuval_switch();
+			break;
+
+		case SLEEP:
+			break;
+
+		case SETTING:
+			menuval = TREBLE;
+			menuval_switch();
+			lcdsend(0xC0, reg);
+			lcdsendvol(0xFF, volrpt_2); // box
+			lcdsendvol(0x20, volrptcnl_2); // box
+			break;
+
+		case BASS:
+			if (volrpt_1 != 16) {
+				lcdsend(0xC0, reg);
+				volrpt_1++;
+				volrptcnl_1 = 16 - volrpt_1;
+				lcdsendvol(0xFF, volrpt_1); // box
+				lcdsendvol(0x20, volrptcnl_1); // box
+			}
+			break;
+
+		case TREBLE:
+			if (volrpt_2 != 16) {
+				lcdsend(0xC0, reg);
+				volrpt_2++;
+				volrptcnl_2 = 16 - volrpt_2;
+				lcdsendvol(0xFF, volrpt_2); // box
+				lcdsendvol(0x20, volrptcnl_2); // box
+			}
+			break;
+		}
+		break;
+
+	case 0xF6: // center
+		switch (menuval) {
+
+		case MAIN_DISPLAY:
+			menuval = MENU;
+			menuval_switch();
+			break;
+
+		case MENU:
+			break;
+		case SLEEP:
+			break;
+		case SETTING:
+			break;
+		case BASS:
+			menuval = SETTING;
+			menuval_switch();
+			break;
+		case TREBLE:
+			menuval = SETTING;
+			menuval_switch();
+			break;
+		}
+		break;
+
+	case 0xDE: // down
+		switch (menuval) {
+
+		case MAIN_DISPLAY:
+			last = last - 1;
+			freq = freq - 1;
+			tunefreq = tunefreq - 12;
+			menuval_switch();
+			i2c_update();
+			break;
+		case MENU:
+			--menuval;
+			menuval_switch();
+			break;
+		case SLEEP:
+			menuval = MAIN_DISPLAY;
+			menuval_switch();
+			i2c_update();
+			break;
+		case SETTING:
+			menuval = MENU;
+			menuval_switch();
+			break;
+		case BASS:
+			menuval = SETTING;
+			menuval_switch();
+			break;
+		case TREBLE:
+			menuval = SETTING;
+			menuval_switch();
+			break;
+		}
+		break;
+	}
+
+	P1IFG &= ~BUTTON; // P1.3 IFG cleared
 //__delay_cycles(10000);
 }
 
@@ -394,17 +391,15 @@ void lcdsendfreq(int freq, char buffer[32]) {
 	}
 }
 
-void PrintStr(char *Text)
-{
-    char *c;
+void PrintStr(char *Text) {
+	char *c;
 
-    c = Text;
+	c = Text;
 
-    while ((c != 0) && (*c != 0))
-    {
-    	lcdsend(*c, data);
-        c++;
-    }
+	while ((c != 0) && (*c != 0)) {
+		lcdsend(*c, data);
+		c++;
+	}
 }
 
 void lcddisplay(int freq, char buffer[32], unsigned char volrpt,
@@ -418,7 +413,6 @@ void lcddisplay(int freq, char buffer[32], unsigned char volrpt,
 	lcdsendvol(0xFF, volrpt); // box
 	lcdsendvol(0x20, volrptcnl); // box
 }
-
 
 void menuval_switch(void) {
 	switch (menuval) {
@@ -514,21 +508,9 @@ void main(void) {
 	__enable_interrupt(); // enable all interrupts
 	menuval_switch();
 	i2c_update();
-for(;;) {
+	for (;;) {
 
-
-
-
-}
-
+	}
 
 }
-
-
-
-
-
-
-
-
 
